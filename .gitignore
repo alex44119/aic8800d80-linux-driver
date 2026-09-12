@@ -1,0 +1,24 @@
+# Linux kernel module build output
+**/*.o
+**/*.ko
+**/*.o.d
+**/*.o.cmd
+**/*.ko.cmd
+**/*.mod
+**/*.mod.c
+**/*.mod.c.*
+**/*.mod.cmd
+**/*.symvers
+**/*.symvers.cmd
+**/*.order
+**/*.order.cmd
+**/.tmp_versions/
+**/.cache.mk
+**/compile_commands.json
+
+# Editor and local files
+*~
+*.swp
+.idea/
+.vscode/
+
