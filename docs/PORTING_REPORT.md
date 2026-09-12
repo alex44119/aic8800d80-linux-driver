@@ -57,6 +57,14 @@ a69c:8d83  AIC 8800D80（工作模式）
 
 原厂源码仍会产生若干 `-Wmissing-prototypes` 警告，但不会阻止模块构建或加载。
 
+### 内核升级与 DKMS 修复
+
+系统重启后切换到 `6.8.0-138-generic`，原先只为 `6.8.0-124-generic` 安装的模块无法被新内核找到。源码在新内核上重新编译、安装和加载后，USB 设备、无线接口及原有连接均恢复正常。
+
+仓库随后加入 `dkms.conf` 和 `scripts/install-dkms.sh`。推荐安装流程现在通过 DKMS 注册两个模块，并通过 `/etc/modules-load.d/aic8800d80.conf` 配置开机加载，从而在后续内核升级时自动重建驱动。
+
+从手动模块切换到 DKMS 模块的热重载测试也已通过。热重载后需要重启 `wpa_supplicant` 和 `NetworkManager`，随后保存的连接和热点扫描均恢复。
+
 ## English
 
 ### Goal and environment
@@ -113,3 +121,11 @@ a69c:8d83  AIC 8800D80 (operational mode)
 - No FORTIFY, field-spanning-write, or Call Trace warning after the final physical reconnect
 
 The vendor source still emits several `-Wmissing-prototypes` warnings. They do not prevent module compilation or loading.
+
+### Kernel upgrade and DKMS fix
+
+After a reboot, the system moved to `6.8.0-138-generic`. The modules previously installed only for `6.8.0-124-generic` were unavailable to the new kernel. Rebuilding, installing, and loading the source for the new kernel restored the USB device, wireless interface, and saved connection.
+
+The repository now includes `dkms.conf` and `scripts/install-dkms.sh`. The recommended installation registers both modules with DKMS and configures boot-time loading through `/etc/modules-load.d/aic8800d80.conf`, allowing the driver to be rebuilt automatically during future kernel upgrades.
+
+The transition from manually installed modules to DKMS modules was also tested through a live reload. Restarting `wpa_supplicant` and `NetworkManager` after the reload restored the saved connection and access-point scanning.

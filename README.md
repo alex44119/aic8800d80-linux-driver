@@ -2,9 +2,9 @@
 
 [中文](#中文说明) | [English](#english)
 
-This repository contains the AIC8800D80 USB Wi-Fi driver, firmware, and Linux 6.8 compatibility fixes. It was built and tested on Ubuntu 22.04 with kernel `6.8.0-124-generic` and USB device `a69c:8d80` / `a69c:8d83`.
+This repository contains the AIC8800D80 USB Wi-Fi driver, firmware, Linux 6.8 compatibility fixes, and DKMS support. It was built and tested on Ubuntu 22.04 with kernels `6.8.0-124-generic` and `6.8.0-138-generic`, using USB device `a69c:8d80` / `a69c:8d83`.
 
-本仓库包含 AIC8800D80 USB Wi-Fi 驱动、固件及 Linux 6.8 兼容补丁。已在 Ubuntu 22.04、内核 `6.8.0-124-generic` 和 USB 设备 `a69c:8d80` / `a69c:8d83` 上完成编译及实机验证。
+本仓库包含 AIC8800D80 USB Wi-Fi 驱动、固件、Linux 6.8 兼容补丁及 DKMS 支持。已在 Ubuntu 22.04、内核 `6.8.0-124-generic` 和 `6.8.0-138-generic`、USB 设备 `a69c:8d80` / `a69c:8d83` 上完成编译及实机验证。
 
 ## 中文说明
 
@@ -22,7 +22,7 @@ This repository contains the AIC8800D80 USB Wi-Fi driver, firmware, and Linux 6.
 当前版本已验证：
 
 - Ubuntu 22.04
-- Linux `6.8.0-124-generic`
+- Linux `6.8.0-124-generic`、`6.8.0-138-generic`
 - x86_64
 - AIC8800D80 USB Wi-Fi，VID:PID 为 `a69c:5721`、`a69c:8d80` 或 `a69c:8d83`
 
@@ -32,7 +32,7 @@ This repository contains the AIC8800D80 USB Wi-Fi driver, firmware, and Linux 6.
 
 ```bash
 sudo apt update
-sudo apt install build-essential linux-headers-$(uname -r) eject
+sudo apt install build-essential linux-headers-$(uname -r) dkms eject
 ```
 
 确认当前内核的构建目录存在：
@@ -41,7 +41,20 @@ sudo apt install build-essential linux-headers-$(uname -r) eject
 test -e /lib/modules/$(uname -r)/build && echo "kernel headers ready"
 ```
 
-### 2. 安装固件和 udev 规则
+### 2. 推荐：使用 DKMS 安装
+
+在仓库根目录执行：
+
+```bash
+chmod +x scripts/install-dkms.sh
+sudo ./scripts/install-dkms.sh
+```
+
+此脚本会安装固件和 udev 规则、注册并构建两个 DKMS 模块，并配置开机自动加载。以后安装新内核时，DKMS 会为新内核自动重建驱动；新内核对应的头文件必须已经安装。
+
+安装完成后可直接跳到“验证”章节。以下第 3 至 5 节保留为手动安装方法。
+
+### 3. 手动安装：固件和 udev 规则
 
 在仓库根目录执行：
 
@@ -55,7 +68,7 @@ sudo udevadm trigger
 
 udev 规则会弹出网卡自带的只读存储设备，使硬件从 `a69c:5721` 切换到 Wi-Fi 启动态。
 
-### 3. 编译驱动
+### 4. 手动安装：编译驱动
 
 ```bash
 cd aic8800_linux_drvier/drivers/aic8800
@@ -72,7 +85,7 @@ aic8800_fdrv/aic8800_fdrv.ko
 
 编译时可能看到 `no previous prototype` 警告。这些是原厂源码已有的非致命警告；最终构建应以退出状态 0 结束。
 
-### 4. 安装并加载模块
+### 5. 手动安装：安装并加载模块
 
 仍在 `aic8800_linux_drvier/drivers/aic8800` 目录中执行：
 
@@ -93,7 +106,7 @@ sudo modprobe aic8800_fdrv
 
 然后拔出并重新插入网卡。等待数秒，让设备依次完成存储模式弹出、固件下载和 Wi-Fi 接口创建。
 
-### 5. 验证
+### 6. 验证
 
 ```bash
 lsmod | grep -E '^aic|^cfg80211'
@@ -109,10 +122,12 @@ journalctl -k -b | grep -i aic
 - `nmcli device wifi list` 能列出附近热点
 - 内核日志包含 `fw download complete` 和 `New interface create wlan0`
 
-### 6. 卸载
+### 7. 卸载
 
 ```bash
 sudo modprobe -r aic8800_fdrv aic_load_fw
+sudo dkms remove aic8800d80/1.0.0 --all
+sudo rm -f /etc/modules-load.d/aic8800d80.conf
 cd aic8800_linux_drvier/drivers/aic8800
 sudo make uninstall
 sudo rm -rf /lib/firmware/aic8800D80
@@ -122,7 +137,7 @@ sudo udevadm control --reload-rules
 
 ### 内核升级说明
 
-本驱动是内核外置模块。升级内核后，需要为新内核安装对应头文件，并重新执行编译、`sudo make install` 和模块加载步骤。
+推荐使用上述 DKMS 安装方式。升级内核时，只要对应的内核头文件已经安装，DKMS 就会自动重建并安装驱动。手动安装方式仍需在每次内核升级后重新编译和安装。
 
 ### 故障排查
 
@@ -155,7 +170,7 @@ sudo udevadm control --reload-rules
 The current version was tested with:
 
 - Ubuntu 22.04
-- Linux `6.8.0-124-generic`
+- Linux `6.8.0-124-generic` and `6.8.0-138-generic`
 - x86_64
 - AIC8800D80 USB Wi-Fi with VID:PID `a69c:5721`, `a69c:8d80`, or `a69c:8d83`
 
@@ -165,7 +180,7 @@ Compatibility branches for older kernels remain in the source, but other distrib
 
 ```bash
 sudo apt update
-sudo apt install build-essential linux-headers-$(uname -r) eject
+sudo apt install build-essential linux-headers-$(uname -r) dkms eject
 ```
 
 Check that the kernel build directory exists:
@@ -174,7 +189,20 @@ Check that the kernel build directory exists:
 test -e /lib/modules/$(uname -r)/build && echo "kernel headers ready"
 ```
 
-### 2. Install firmware and the udev rule
+### 2. Recommended: install with DKMS
+
+Run from the repository root:
+
+```bash
+chmod +x scripts/install-dkms.sh
+sudo ./scripts/install-dkms.sh
+```
+
+The script installs firmware and the udev rule, registers and builds both DKMS modules, and configures them to load at boot. DKMS then rebuilds the driver when a new kernel is installed, provided that the matching kernel headers are installed.
+
+After the script finishes, continue at the verification section. Sections 3 through 5 below describe the manual alternative.
+
+### 3. Manual installation: firmware and udev rule
 
 Run these commands from the repository root:
 
@@ -188,7 +216,7 @@ sudo udevadm trigger
 
 The udev rule ejects the adapter's read-only storage device so it can switch from `a69c:5721` to Wi-Fi boot mode.
 
-### 3. Build the driver
+### 4. Manual installation: build the driver
 
 ```bash
 cd aic8800_linux_drvier/drivers/aic8800
@@ -205,7 +233,7 @@ aic8800_fdrv/aic8800_fdrv.ko
 
 The vendor source emits several non-fatal `no previous prototype` warnings. The build itself should finish with exit status 0.
 
-### 4. Install and load the modules
+### 5. Manual installation: install and load the modules
 
 From `aic8800_linux_drvier/drivers/aic8800`, run:
 
@@ -226,7 +254,7 @@ sudo modprobe aic8800_fdrv
 
 Physically reconnect the adapter. Allow a few seconds for storage-mode ejection, firmware download, and Wi-Fi interface creation.
 
-### 5. Verify the installation
+### 6. Verify the installation
 
 ```bash
 lsmod | grep -E '^aic|^cfg80211'
@@ -242,10 +270,12 @@ A working installation shows:
 - Nearby access points in `nmcli device wifi list`
 - `fw download complete` and `New interface create wlan0` in the kernel log
 
-### 6. Uninstall
+### 7. Uninstall
 
 ```bash
 sudo modprobe -r aic8800_fdrv aic_load_fw
+sudo dkms remove aic8800d80/1.0.0 --all
+sudo rm -f /etc/modules-load.d/aic8800d80.conf
 cd aic8800_linux_drvier/drivers/aic8800
 sudo make uninstall
 sudo rm -rf /lib/firmware/aic8800D80
@@ -255,7 +285,7 @@ sudo udevadm control --reload-rules
 
 ### Kernel upgrades
 
-This is an out-of-tree kernel module. After a kernel upgrade, install the matching kernel headers and repeat the build, `sudo make install`, and module-loading steps for the new kernel.
+The recommended DKMS installation automatically rebuilds and installs the driver after a kernel upgrade, provided that matching kernel headers are installed. A manual installation must still be rebuilt and reinstalled after every kernel upgrade.
 
 ### Troubleshooting
 
@@ -271,4 +301,3 @@ This is an out-of-tree kernel module. After a kernel upgrade, install the matchi
 - Invalid module format: make sure the module was built for the current `uname -r` and inspect its `vermagic` with `modinfo`.
 
 See [docs/PORTING_REPORT.md](docs/PORTING_REPORT.md) for the Linux 6.8 porting and validation record.
-
